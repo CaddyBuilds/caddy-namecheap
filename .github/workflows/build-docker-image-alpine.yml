@@ -1,0 +1,102 @@
+name: Build and Push Alpine Docker Image
+
+on:
+  repository_dispatch:
+    types: [caddy-release]
+  workflow_dispatch:
+    inputs:
+      build_version:
+        description: 'Caddy version to build (without v prefix, e.g., 2.8.0)'
+        required: false
+
+permissions:
+  packages: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Convert Repository Owner to Lowercase
+        run: |
+          REPO_OWNER=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          echo "REPO_OWNER=${REPO_OWNER}" >> $GITHUB_ENV
+
+      - name: Set version
+        id: set_version
+        run: |
+          # Get version from input or payload
+          VERSION="${{ github.event.inputs.build_version || github.event.client_payload.caddy_version }}"
+
+          # Exit if no version specified
+          if [ -z "$VERSION" ]; then
+            echo "No version specified. Exiting."
+            exit 1
+          fi
+
+          # Strip v prefix if present
+          VERSION="${VERSION#v}"
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Docker Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/${{ env.REPO_OWNER }}/caddy-namecheap
+            ${{ secrets.DOCKERHUB_USERNAME }}/caddy-namecheap
+          tags: |
+            # Raw version tags
+            type=raw,value=${{ env.VERSION }}-alpine
+            type=raw,value=alpine
+            # Semver tagging strategy
+            type=semver,pattern={{version}}-alpine,value=${{ env.VERSION }}
+            type=semver,pattern={{major}}.{{minor}}-alpine,value=${{ env.VERSION }}
+            type=semver,pattern={{major}}-alpine,value=${{ env.VERSION }}
+          labels: |
+            org.opencontainers.image.title=Caddy Namecheap Alpine
+            org.opencontainers.image.description=Caddy with Namecheap DNS module (Alpine)
+            org.opencontainers.image.url=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.version=${{ env.VERSION }}-alpine
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.vendor=${{ github.repository_owner }}
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.alpine
+          push: true
+          build-args: |
+            CADDY_VERSION=${{ env.VERSION }}
+          platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/ppc64le,linux/s390x
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
