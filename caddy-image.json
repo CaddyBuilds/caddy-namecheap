@@ -1,0 +1,8 @@
+{
+  "title": "Caddy Namecheap",
+  "description": "Caddy with Namecheap DNS module",
+  "verify_module": "dns.providers.namecheap",
+  "alpine_alias": true,
+  "slim": false,
+  "create_release": true
+}

@@ -25,7 +25,9 @@ Deploy a hassle-free Caddy server with built-in support for Namecheap DNS-01 ACM
 - **Continuous Integration**: Utilizes GitHub Actions for seamless CI/CD.
 - **Namecheap DNS Integration**: Integrates Namecheap DNS for automatic SSL certificate management.
 - **Multi-Platform Support**: Builds images for multiple architectures, including `amd64`, `arm64`, `arm/v7` (Raspberry Pi), `ppc64le`, and `s390x` , ensuring compatibility across a wide range of devices and systems.
-- **Alpine-based Image**: Provides a lightweight Alpine-based image for smaller size and faster deployment.
+- **Module Update Detection**: Rebuilds when the Namecheap DNS module gets new commits, not only on Caddy releases.
+- **Base Image Tracking**: Rebuilds when the official Caddy image is republished for base OS or Go fixes.
+- **Fork-Friendly**: Image names are derived from your GitHub repository; edit one line in the Dockerfile to change the modules.
 - **Manual Trigger**: Allows manual triggering of the build process.
 - **Open Source**: Contributions are welcome under the MIT License.
 
@@ -263,8 +265,7 @@ The [caddy-namecheap](https://github.com/caddybuilds/caddy-namecheap/pkgs/contai
     - **`2.7`**: Minor version tag for the latest patch release within the 2.7 series, allowing for minor updates without breaking changes.
     - **`2`**: Major version tag for the latest release within the 2.x series, providing updates within the major version while maintaining compatibility.
 
-- `alpine`: Always points to the latest stable release of the Alpine-based image.
-  - `<version>-alpine`: Specific version tags for the Alpine-based image (e.g., `2.7.6-alpine`).
+- **`alpine`** and **`<version>-alpine`**: Aliases of the tags above, kept for existing users. The official `caddy` Linux image is Alpine-based, so the default image and the `-alpine` tags are the same image.
 
 ## Platform Support
 
@@ -276,22 +277,9 @@ The `caddybuilds/caddy-namecheap` image is built to support multiple platforms, 
 - **linux/ppc64le**: 64-bit PowerPC Little Endian architecture.
 - **linux/s390x**: 64-bit IBM System z architecture.
 
-### Alpine Support
+### Alpine
 
-The Alpine-based image provides a lightweight alternative, based on the popular Alpine Linux project. Alpine Linux is much smaller than most distribution base images (~5MB), leading to much slimmer images in general.
-
-#### Benefits of Alpine-based Image
-
-- **Smaller Size**: The image size is significantly reduced, which can be beneficial for faster downloads and reduced storage usage.
-- **Minimal Base**: Alpine Linux uses musl libc instead of glibc, making it lightweight. However, this may lead to compatibility issues with software that requires glibc.
-- **Customization**: To keep the image minimal, additional tools (such as git or bash) are not included by default. You can customize the image by adding the necessary packages in your Dockerfile.
-
-To use the Alpine-based image, pull it from the GitHub Container Registry or Docker Hub:
-
-```sh
-docker pull ghcr.io/caddybuilds/caddy-namecheap:alpine
-docker pull caddybuilds/caddy-namecheap:alpine
-```
+The image is based on the official `caddy` image, which is itself Alpine-based. The `alpine` and `<version>-alpine` tags are aliases of the default tags and resolve to the same digest.
 
 ### Raspberry Pi Support
 
@@ -302,6 +290,16 @@ To use the image on a Raspberry Pi, ensure you are running a compatible operatin
 ```sh
 docker pull ghcr.io/caddybuilds/caddy-namecheap:latest
 ```
+# How It Works
+
+The pipeline is shared with the other CaddyBuilds images through [caddy-base](https://github.com/CaddyBuilds/caddy-base):
+
+1. **Daily release check**: a scheduled workflow looks for new [Caddy releases](https://github.com/caddyserver/caddy/releases) and waits until the official image has every required platform.
+2. **Module update detection**: the latest commit of each module in the `Dockerfile` is tracked in `module-versions.json`; new commits trigger a rebuild.
+3. **Base image tracking**: if the official image is republished for base OS or Go fixes, the image is rebuilt on top of it.
+4. **Multi-platform build**: the image is built for all supported architectures and pushed to GitHub Container Registry and, optionally, Docker Hub. Each release lists why it was built or rebuilt.
+5. **Failure notifications**: a failed build opens a GitHub issue.
+
 # Building Your Own Docker Image
 If you prefer to build your own Docker image, follow these steps:
 
@@ -332,8 +330,10 @@ If you prefer to build your own Docker image, follow these steps:
      - `DOCKERHUB_USERNAME`: Your DockerHub username (optional).
      - `DOCKERHUB_TOKEN`: Your DockerHub access token (optional).
 
-4. **Customize the workflow** (if needed):
-   - The workflow file `.github/workflows/check-caddy-release.yml` is configured to check for new Caddy releases and build the Docker image. You can customize the schedule or any other part of the workflow as needed.
+4. **Customize the image** (if needed):
+   - Add or change modules in the `--with` lines of the `Dockerfile`. The daily check reads the module list from there.
+   - `caddy-image.json` holds the image title, description and the module ID verified after each build.
+   - The workflows in `.github/workflows/` call the shared [caddy-base](https://github.com/CaddyBuilds/caddy-base) workflows, which handle the release check, the multi-platform build, tagging and releases.
 
 5. **Commit and push any changes** (if you made customizations):
    ```sh
