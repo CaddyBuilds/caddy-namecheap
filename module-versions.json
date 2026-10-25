@@ -1,0 +1,10 @@
+{
+  "last_checked": "2026-10-25T20:03:38.016399+00:00",
+  "modules": {
+    "github.com/caddy-dns/namecheap": {
+      "repo": "caddy-dns/namecheap",
+      "last_commit_sha": "c7fcf32a68fbf6424aa29ba49a8d588f424bd364",
+      "last_checked": "2026-10-25T20:03:38.016376+00:00"
+    }
+  }
+}
