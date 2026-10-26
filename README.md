@@ -8,14 +8,21 @@ Deploy a hassle-free Caddy server with built-in support for Namecheap DNS-01 ACM
 - [Features](#features)
 - [Usage](#usage)
   - [Using the Pre-built Docker Image](#using-the-pre-built-docker-image)
-  - [Building Your Own Docker Image](#building-your-own-docker-image)
-  - [Sample Caddyfile](#sample-caddyfile)
+- [Sample Caddyfile](#sample-caddyfile)
+  - [Global Configuration (Use DNS Challenge for All Sites)](#global-configuration-use-dns-challenge-for-all-sites)
+  - [Per-site Configuration](#per-site-configuration)
 - [Configuration](#configuration)
-  - [ACME DNS Challenge Configuration](#acme-dns-challenge-configuration)
   - [Creating Namecheap API Credentials](#creating-namecheap-api-credentials)
-- [Platform Support](#platform-support)
-  - [Raspberry Pi](#raspberry-pi-support)
+  - [ACME DNS Challenge Configuration](#acme-dns-challenge-configuration)
 - [Tags](#tags)
+  - [Default or slim?](#default-or-slim)
+  - [Why `alpine` tags point to the same image](#why-alpine-tags-point-to-the-same-image)
+- [Platform Support](#platform-support)
+  - [Alpine](#alpine)
+  - [Raspberry Pi Support](#raspberry-pi-support)
+- [Prerequisites](#prerequisites)
+- [Setup Instructions](#setup-instructions)
+- [Usage](#usage-1)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -27,6 +34,7 @@ Deploy a hassle-free Caddy server with built-in support for Namecheap DNS-01 ACM
 - **Multi-Platform Support**: Builds images for multiple architectures, including `amd64`, `arm64`, `arm/v7` (Raspberry Pi), `ppc64le`, and `s390x` , ensuring compatibility across a wide range of devices and systems.
 - **Module Update Detection**: Rebuilds when the Namecheap DNS module gets new commits, not only on Caddy releases.
 - **Base Image Tracking**: Rebuilds when the official Caddy image is republished for base OS or Go fixes.
+- **Slim Variant**: `slim` tags carry one Caddy binary on an Alpine base, about 45% smaller to download.
 - **Fork-Friendly**: Image names are derived from your GitHub repository; edit one line in the Dockerfile to change the modules.
 - **Manual Trigger**: Allows manual triggering of the build process.
 - **Open Source**: Contributions are welcome under the MIT License.
@@ -250,22 +258,34 @@ This setup is the same as specifying the provider in the [tls directive's ACME i
 
 ## Tags
 
-The [caddy-namecheap](https://github.com/caddybuilds/caddy-namecheap/pkgs/container/caddy-namecheap) image on GitHub Container Registry and Docker Hub provides the following tags:
+The image is available on [GitHub Container Registry](https://github.com/caddybuilds/caddy-namecheap/pkgs/container/caddy-namecheap) and Docker Hub. There are two images, default and slim, each under a few tags:
 
-- **`latest`**: 
-  - Always points to the most recent stable release of Caddy with the Namecheap DNS module.
-  - Automatically updated to ensure you have the latest features and improvements.
+| Tags | Image |
+|------|-------|
+| `latest`, `<version>`, `<major>.<minor>`, `<major>` | Default |
+| `alpine`, `<version>-alpine`, `<major>.<minor>-alpine`, `<major>-alpine` | Default (same image, see below) |
+| `slim`, `<version>-slim`, `<major>.<minor>-slim`, `<major>-slim` | Slim |
 
-- **`<version>`**:
-  - Specific version tags for precise version control and consistency in deployments.
-  - Examples include:
-    - **`2.7.6`**: Full version tag for Caddy version 2.7.6, ensuring you are using this exact release. 
-    
-         (eg: ```docker pull ghcr.io/caddybuilds/caddy-namecheap:2.8.0``` )
-    - **`2.7`**: Minor version tag for the latest patch release within the 2.7 series, allowing for minor updates without breaking changes.
-    - **`2`**: Major version tag for the latest release within the 2.x series, providing updates within the major version while maintaining compatibility.
+`<version>` pins a release (e.g. `docker pull ghcr.io/caddybuilds/caddy-namecheap:2.11.7`), `<major>.<minor>` follows the latest patch (e.g. `2.11`) and `<major>` the latest release (e.g. `2`). Slim tags exist from `2.11.7` onward.
 
-- **`alpine`** and **`<version>-alpine`**: Aliases of the tags above, kept for existing users. The official `caddy` Linux image is Alpine-based, so the default image and the `-alpine` tags are the same image.
+### Default or slim?
+
+Both run the same Caddy binary with the same modules. They differ only in the image underneath.
+
+| | Default | Slim |
+|---|---|---|
+| Built on | The official [Caddy image](https://hub.docker.com/_/caddy) | [caddy-base](https://github.com/CaddyBuilds/caddy-base#the-caddy-base-image): the official image without its Caddy binary |
+| Download size (amd64) | about 43 MB | about 24 MB |
+| Caddy binaries inside | Two: the stock one stays in a lower layer, ours replaces it on top | One: ours |
+| Rebuilt for base fixes when | The official Caddy image is republished | Alpine is republished (caddy-base rebuilds, then slim follows) |
+
+Everything else is the same: Alpine, packages, default Caddyfile, `/data` and `/config`, ports, command, platforms, and permission to bind ports 80 and 443 as a non-root user.
+
+Use **slim** for a smaller image. Use **default** if you want to stay on the Docker Official Image exactly as Caddy ships it.
+
+### Why `alpine` tags point to the same image
+
+This follows the official Caddy image. On Linux, `caddy:latest`, `caddy:2.11.7` and `caddy:2.11.7-alpine` are all the same Alpine image. The plain tags also include Windows builds, which is the only reason both exist. We only build Linux images, so the `-alpine` tags are aliases: a setup that uses `caddy:2.11.7-alpine` can switch to `caddy-namecheap:2.11.7-alpine` without changing anything else.
 
 ## Platform Support
 
@@ -279,7 +299,7 @@ The `caddybuilds/caddy-namecheap` image is built to support multiple platforms, 
 
 ### Alpine
 
-The image is based on the official `caddy` image, which is itself Alpine-based. The `alpine` and `<version>-alpine` tags are aliases of the default tags and resolve to the same digest.
+Both images are built on [Alpine Linux](https://alpinelinux.org/): the default through the official Caddy image, slim through caddy-base. The `alpine` and `<version>-alpine` tags are aliases of the default tags and resolve to the same digest.
 
 ### Raspberry Pi Support
 

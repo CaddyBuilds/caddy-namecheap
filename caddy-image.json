@@ -3,6 +3,6 @@
   "description": "Caddy with Namecheap DNS module",
   "verify_module": "dns.providers.namecheap",
   "alpine_alias": true,
-  "slim": false,
+  "slim": true,
   "create_release": true
 }
