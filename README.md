@@ -110,7 +110,7 @@ See [Quick Start](#quick-start) for a full docker-compose setup and [Tags](#tags
 
 #### Global DNS Configuration
 
-Set the ACME DNS challenge provider globally so it applies to all sites (full file: [`Caddyfile_global`](Caddyfile_global)):
+Set the ACME DNS challenge provider globally so it applies to all sites:
 
 ```
 {
@@ -135,7 +135,7 @@ another-example.com {
 
 #### Per-Site DNS Configuration
 
-Configure the DNS challenge individually per site (full file: [`Caddyfile_per_site`](Caddyfile_per_site)):
+Configure the DNS challenge individually per site:
 
 ```
 example.com {
